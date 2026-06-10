@@ -2,20 +2,32 @@ import SwiftUI
 internal import Combine
 
 struct ContentView: View {
+    // Base State Architecture
     @State var score = 0
     @State var timeRemaining = 10
     @State var highScore = 0
     
-    // Challenge 1 States
+    // Challenge 1: Combo Tracking
     @State var comboMultiplier = 1
     @State var lastTapTime = Date()
+    
+    // Challenge 2: Dynamic Colors
+    @State var buttonColor: Color = .blue
+    
+    // Challenge 3: Spatial Offsets (Movement Container Boundings)
+    @State var buttonOffset = CGSize.zero
+    
+    // Challenge 5: Flash Burst Mode Flag
+    @State var isBurstActive = false
     
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
         VStack {
             if timeRemaining > 0 {
-                VStack(spacing: 30) {
+                // CORE GAME VIEW
+                VStack(spacing: 20) {
+                    // Header Metrics Layout
                     HStack {
                         Text("Time: \(timeRemaining)s")
                             .font(.title2).bold()
@@ -30,61 +42,160 @@ struct ContentView: View {
                     }
                     .padding()
                     
+                    // Burst Status Ribbon Display
+                    if isBurstActive {
+                        Text("🔥 BURST ACTIVE: DOUBLE POINTS! 🔥")
+                            .font(.headline)
+                            .foregroundColor(.yellow)
+                            .bold()
+                            .transition(.scale)
+                    } else {
+                        Text("Game Area")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                    }
+                    
                     Spacer()
                     
-                    ZStack {
-                        Button(action: {
-                            // Combo Calculation Engine
-                            let now = Date()
-                            if now.timeIntervalSince(lastTapTime) <= 0.5 {
-                                comboMultiplier += 1
-                            } else {
-                                comboMultiplier = 1
+                    // BOUNDED BOUNDARY ARENA FOR TARGET MOVEMENTS
+                    GeometryReader { geometry in
+                        ZStack {
+                            Button(action: {
+                                handleTap()
+                            }) {
+                                Text("TAP!")
+                                    .font(.title).bold()
+                                    .foregroundColor(.white)
+                                    .padding(.vertical, 35)
+                                    .padding(.horizontal, 50)
+                                    // Burst overrides normal color configurations
+                                    .background(isBurstActive ? Color.yellow : buttonColor)
+                                    .cornerRadius(20)
+                                    .shadow(radius: 5)
                             }
-                            lastTapTime = now
-                            
-                            // Add score factoring in the multiplier
-                            score += (1 * comboMultiplier)
-                        }) {
-                            Text("TAP!")
-                                .font(.title).bold()
-                                .foregroundColor(.white)
-                                .padding(.vertical, 40)
-                                .padding(.horizontal, 60)
-                                .background(Color.blue)
-                                .cornerRadius(20)
+                            // Challenge 3 & 4 Offset/Scaling modifiers
+                            .offset(buttonOffset)
+                            .scaleEffect(CGFloat(timeRemaining) / 10.0 * 0.7 + 0.3)
                         }
-                        // Challenge 4: Shrinking Button Modifier
-                        // Baseline scaling formula ensures button remains functional at 30% sizing near 0s
-                        .scaleEffect(CGFloat(timeRemaining) / 10.0 * 0.7 + 0.3)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .onAppear {
+                            // Center alignment initialization
+                            buttonOffset = CGSize.zero
+                        }
                     }
-                    .frame(height: 300)
+                    .frame(height: 350)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(15)
+                    .padding(.horizontal)
                     
                     Spacer()
                 }
-                .padding()
                 .onReceive(timer) { _ in
-                    if timeRemaining > 0 {
-                        timeRemaining -= 1
-                    }
-                    if timeRemaining == 0 {
-                        comboMultiplier = 1 // Reset combo for next match
-                        if score > highScore { highScore = score }
-                    }
+                    processGameTick()
                 }
+                
             } else {
-                // Game Over Screen (Kept identical to Commit 3)
+                // THE GAME OVER VIEW
                 VStack(spacing: 20) {
-                    Text("Game Over!").font(.largeTitle).bold().foregroundColor(.red)
-                    Text("Final Score: \(score)").font(.title)
-                    Text("High Score: \(highScore)").font(.title3).foregroundColor(.gray)
-                    Button("Play Again") {
-                        score = 0
-                        timeRemaining = 10
+                    Text("Game Over!")
+                        .font(.largeTitle).bold()
+                        .foregroundColor(.red)
+                    
+                    Text("Final Score: \(score)")
+                        .font(.title)
+                    
+                    Text("High Score: \(highScore)")
+                        .font(.title3).foregroundColor(.gray)
+                    
+                    Button(action: {
+                        resetGame()
+                    }) {
+                        Text("Play Again")
+                            .font(.headline).foregroundColor(.white)
+                            .padding().background(Color.green).cornerRadius(10)
                     }
-                    .font(.headline).foregroundColor(.white).padding().background(Color.green).cornerRadius(10)
+                    .padding(.top, 20)
                 }
             }
         }
+    }
+    
+    // --- APP REFACTOR MECHANICS ENGINE ---
+    
+    // Master Input Action Evaluator
+    func handleTap() {
+        let now = Date()
+        if now.timeIntervalSince(lastTapTime) <= 0.5 {
+            comboMultiplier += 1
+        } else {
+            comboMultiplier = 1
+        }
+        lastTapTime = now
+        
+        // Value computation bases
+        var basePoint = 1
+        if buttonColor == .gray {
+            basePoint = -2  // Penalty state rule
+        } else if buttonColor == .green {
+            basePoint = 2   // Bonus state rule
+        }
+        
+        if isBurstActive {
+            basePoint *= 2  // Multiplier compounding for bursts
+        }
+        
+        score += (basePoint * comboMultiplier)
+    }
+    
+    // 1-Second Cycle Process Loop Evaluator
+    func processGameTick() {
+        if timeRemaining > 0 {
+            timeRemaining -= 1
+            
+            // Challenge 2: Every single second, shuffle button modifier distributions
+            let roller = Int.random(in: 1...3)
+            if roller == 1 {
+                buttonColor = .green
+            } else if roller == 2 {
+                buttonColor = .gray
+            } else {
+                buttonColor = .blue
+            }
+            
+            // Challenge 3: Relocate position coordinates every alternate second block
+            if timeRemaining % 2 == 0 {
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    buttonOffset = CGSize(
+                        width: CGFloat.random(in: -80...80),
+                        height: CGFloat.random(in: -110...110)
+                    )
+                }
+            }
+            
+            // Challenge 5: Enable burst window state when remaining time falls to exactly 5 seconds
+            if timeRemaining == 5 {
+                isBurstActive = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    self.isBurstActive = false
+                }
+            }
+        }
+        
+        // Wrap up execution logic
+        if timeRemaining == 0 {
+            comboMultiplier = 1
+            buttonOffset = CGSize.zero
+            if score > highScore { highScore = score }
+        }
+    }
+    
+    // Master Match Reset Execution
+    func resetGame() {
+        score = 0
+        timeRemaining = 10
+        comboMultiplier = 1
+        buttonColor = .blue
+        buttonOffset = CGSize.zero
+        isBurstActive = false
     }
 }
