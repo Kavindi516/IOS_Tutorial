@@ -221,15 +221,32 @@ struct ContentView: View {
     @State var comboMultiplier = 1
     @State var lastTapTime = Date()
     
-    // Challenge 2: Dynamic Colors
-    @State var buttonColor: Color = .blue
+    // Challenge 2: Trap Colour
+    @State var buttonColor: Color = .accentViolet
     
     // Challenge 3: Spatial Offsets (Movement Container Boundings)
     @State var buttonOffset = CGSize.zero
     
+    
     // Challenge 5: Flash Burst Mode Flag
     @State var isBurstActive = false
     
+    //Challenge 6: Ghost Mode
+    @State var isGhostActive = false
+    @State var ghostCooldown = 3
+
+    //Challenge 7: Lucky Star
+    @State var isLuckyActive = false
+
+    //Challenge 8: Time Freeze
+    @State var freezeAvailable = false
+    @State var freezeUsed = false
+    @State var isTimeFrozen = false
+    
+    //Score Flash UI
+    @State var flashes: [FlashInfo] = []
+    
+    //Timer
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
@@ -357,48 +374,93 @@ struct ContentView: View {
         score += (basePoint * comboMultiplier)
     }
     
-    // 1-Second Cycle Process Loop Evaluator
+
     func processGameTick() {
-        if timeRemaining > 0 {
-            timeRemaining -= 1
-            
-            // Challenge 2: Every single second, shuffle button modifier distributions
-            let roller = Int.random(in: 1...3)
-            if roller == 1 {
-                buttonColor = .green
-            } else if roller == 2 {
-                buttonColor = .gray
-            } else {
-                buttonColor = .blue
+            guard timeRemaining > 0 else { return }
+     
+            // ── Time Freeze (Challenge 8) ─────────────
+            // If frozen, skip decrement this tick
+            if !isTimeFrozen {
+                timeRemaining -= 1
             }
-            
-            // Challenge 3: Relocate position coordinates every alternate second block
+     
+            // ── Challenge 2: Trap Colour ──────────────
+            // Every second, randomly assign green/gray/violet.
+            // Probabilities: 25% green bonus, 25% gray penalty, 50% normal
+            let roll = Int.random(in: 1...4)
+            switch roll {
+            case 1:    buttonColor = .accentGreen
+            case 2:    buttonColor = .accentGray
+            default:   buttonColor = .accentViolet
+            }
+     
+            // ── Challenge 3: Moving Target ────────────
+            // Every even second, jump to new random position.
+            // The arena is ~350pt tall and ~340pt wide;
+            // offsets are constrained so the button stays
+            // mostly inside the frame.
             if timeRemaining % 2 == 0 {
-                withAnimation(.easeInOut(duration: 0.4)) {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.65)) {
                     buttonOffset = CGSize(
-                        width: CGFloat.random(in: -80...80),
-                        height: CGFloat.random(in: -110...110)
+                        width:  CGFloat.random(in: -90...90),
+                        height: CGFloat.random(in: -100...100)
                     )
                 }
             }
-            
-            // Challenge 5: Enable burst window state when remaining time falls to exactly 5 seconds
-            if timeRemaining == 5 {
-                isBurstActive = true
+     
+            // ── Challenge 5: Burst Mode ───────────────
+            // Activates ONCE when timer first hits 5 seconds.
+            // DispatchAfter deactivates it after 2 seconds.
+            if timeRemaining == 5 && !isBurstActive {
+                withAnimation { isBurstActive = true }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    self.isBurstActive = false
+                    withAnimation { self.isBurstActive = false }
                 }
             }
+     
+            // ── Challenge 6: Ghost Mode ───────────────
+            // ghostCooldown counts down each second.
+            // When it reaches 0, trigger ghost for 1.5s,
+            // then reset cooldown to 3-4 seconds.
+            if ghostCooldown > 0 {
+                ghostCooldown -= 1
+            }
+            if ghostCooldown == 0 && !isGhostActive && timeRemaining > 2 {
+                withAnimation { isGhostActive = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation { self.isGhostActive = false }
+                }
+                ghostCooldown = Int.random(in: 3...4)
+            }
+     
+            // ── Challenge 7: Lucky Star ───────────────
+            // 20% chance each second to show Lucky Star.
+            // Lucky stays active for 1.5s if not tapped.
+            if !isLuckyActive && Int.random(in: 1...5) == 1 {
+                withAnimation { isLuckyActive = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation { self.isLuckyActive = false }
+                }
+            }
+     
+            // ── Challenge 8: Freeze Button Visibility ─
+            // Available between seconds 4–8.
+            // Once used (freezeUsed = true) it stays hidden.
+            withAnimation(.spring()) {
+                freezeAvailable = (timeRemaining >= 4 && timeRemaining <= 7 && !freezeUsed)
+            }
+     
+            // ── Game Over ─────────────────────────────
+            if timeRemaining == 0 {
+                comboMultiplier = 1
+                buttonOffset     = .zero
+                isBurstActive    = false
+                isGhostActive    = false
+                isLuckyActive    = false
+                if score > highScore { highScore = score }
+            }
         }
-        
-        // Wrap up execution logic
-        if timeRemaining == 0 {
-            comboMultiplier = 1
-            buttonOffset = CGSize.zero
-            if score > highScore { highScore = score }
-        }
-    }
-    
+     
     // Master Match Reset Execution
     func resetGame() {
         score = 0
