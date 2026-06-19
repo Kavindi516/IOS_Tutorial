@@ -248,7 +248,7 @@ struct ContentView: View {
     
     //Timer
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    
+
     var body: some View {
         VStack {
             if timeRemaining > 0 {
@@ -460,14 +460,37 @@ struct ContentView: View {
                 if score > highScore { highScore = score }
             }
         }
-     
+    
+    
+    func activateTimeFreeze() {
+            guard !freezeUsed else { return }
+            freezeUsed = true
+            withAnimation { isTimeFrozen = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                withAnimation { self.isTimeFrozen = false }
+            }
+        }
     // Master Match Reset Execution
     func resetGame() {
-        score = 0
-        timeRemaining = 10
-        comboMultiplier = 1
-        buttonColor = .blue
-        buttonOffset = CGSize.zero
-        isBurstActive = false
+            score           = 0
+            timeRemaining   = 10
+            comboMultiplier = 1
+            lastTapTime     = Date()
+            buttonColor     = .accentViolet
+            buttonOffset    = .zero
+            isBurstActive   = false
+            isGhostActive   = false
+            isLuckyActive   = false
+            freezeAvailable = false
+            freezeUsed      = false
+            isTimeFrozen    = false
+            ghostCooldown   = 3
+            flashes         = []
+        }
     }
+     
+#Preview {
+    ContentView()
 }
+
+    
