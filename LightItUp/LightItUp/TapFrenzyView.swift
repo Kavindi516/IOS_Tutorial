@@ -211,7 +211,7 @@ struct FlashInfo: Identifiable {
 }
 
 
-struct ContentView: View {
+struct TapFrenzyView: View {
     // Base State Architecture
     @State var score = 0
     @State var timeRemaining = 10
@@ -744,7 +744,7 @@ struct ContentView: View {
     }
      
 #Preview {
-    ContentView()
+    TapFrenzyView()
 }
 
     
