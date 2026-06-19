@@ -1,6 +1,32 @@
 import SwiftUI
 internal import Combine
 
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let r = Double((int >> 16) & 0xFF) / 255
+        let g = Double((int >> 8)  & 0xFF) / 255
+        let b = Double( int        & 0xFF) / 255
+        self.init(red: r, green: g, blue: b)
+    }
+}
+ 
+// Named palette — change these once to retheme the whole app
+extension Color {
+    static let appBackground  = Color(hex: "08080F") // Deep space black
+    static let arenaBackground = Color(hex: "0F0F1C") // Slightly lighter for game zone
+    static let accentViolet   = Color(hex: "7B2FFF") // Electric purple
+    static let accentCyan     = Color(hex: "00F5FF") // Neon cyan
+    static let accentGold     = Color(hex: "FFD700") // Score gold
+    static let accentDanger   = Color(hex: "FF3B5C") // Red/danger
+    static let accentGreen    = Color(hex: "00E676") // Bonus green
+    static let accentGray     = Color(hex: "546E7A") // Penalty gray
+    static let textPrimary    = Color.white
+    static let textSecondary  = Color(hex: "8899AA")
+}
+
 struct ContentView: View {
     // Base State Architecture
     @State var score = 0
