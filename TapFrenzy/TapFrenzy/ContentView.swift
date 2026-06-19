@@ -68,6 +68,85 @@ struct EnergyRing: View {
     }
 }
 
+struct StatCard: View {
+    let label: String
+    let value: String
+    let tint: Color
+ 
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(label)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.textSecondary)
+                .tracking(1.5)
+                .textCase(.uppercase)
+ 
+            Text(value)
+                .font(.system(size: 24, weight: .black, design: .rounded))
+                .foregroundColor(tint)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.white.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .strokeBorder(tint.opacity(0.25), lineWidth: 1)
+                )
+        )
+    }
+}
+
+struct TimerRing: View {
+    let timeRemaining: Int
+    let totalTime: Int
+    let isFrozen: Bool
+ 
+    var fraction: Double {
+        Double(timeRemaining) / Double(totalTime)
+    }
+ 
+    var ringColor: Color {
+        if isFrozen       { return .accentCyan }
+        if fraction > 0.5 { return .accentCyan }
+        if fraction > 0.25 { return .accentViolet }
+        return .accentDanger
+    }
+ 
+    var body: some View {
+        ZStack {
+            // Track (always full, dim)
+            Circle()
+                .stroke(Color.white.opacity(0.08), lineWidth: 5)
+ 
+            // Remaining time arc
+            Circle()
+                .trim(from: 0, to: fraction)
+                .stroke(
+                    ringColor,
+                    style: StrokeStyle(lineWidth: 5, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+                .animation(.linear(duration: 0.5), value: timeRemaining)
+ 
+            // Center text
+            VStack(spacing: 0) {
+                Text(isFrozen ? "❄️" : "\(timeRemaining)")
+                    .font(.system(size: 20, weight: .black, design: .rounded))
+                    .foregroundColor(ringColor)
+                Text("sec")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(.textSecondary)
+                    .tracking(1)
+            }
+        }
+        .frame(width: 70, height: 70)
+    }
+}
+ 
+
 struct ContentView: View {
     // Base State Architecture
     @State var score = 0
