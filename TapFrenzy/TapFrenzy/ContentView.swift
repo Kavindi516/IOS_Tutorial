@@ -27,6 +27,47 @@ extension Color {
     static let textSecondary  = Color(hex: "8899AA")
 }
 
+struct EnergyRing: View {
+    let combo: Int
+    let isBurst: Bool
+    @State private var pulse = false
+ 
+    var ringColor: Color {
+        if isBurst     { return .accentGold }
+        if combo >= 5  { return .accentCyan }
+        if combo >= 3  { return .accentViolet }
+        return .accentViolet.opacity(0.4)
+    }
+ 
+    var ringScale: CGFloat {
+        // Ring expands slightly with each combo level
+        1.0 + CGFloat(min(combo, 8)) * 0.04
+    }
+ 
+    var lineThickness: CGFloat {
+        CGFloat(min(combo, 8)) * 0.8 + 1.5
+    }
+ 
+    var body: some View {
+        ZStack {
+            // Outer pulsing ring
+            Circle()
+                .strokeBorder(ringColor.opacity(pulse ? 0.15 : 0.45), lineWidth: lineThickness + 4)
+                .scaleEffect(pulse ? ringScale * 1.18 : ringScale)
+                .animation(
+                    .easeInOut(duration: 0.9).repeatForever(autoreverses: true),
+                    value: pulse
+                )
+ 
+            // Inner solid ring — always visible
+            Circle()
+                .strokeBorder(ringColor, lineWidth: lineThickness)
+                .scaleEffect(ringScale)
+        }
+        .onAppear { pulse = true }
+    }
+}
+
 struct ContentView: View {
     // Base State Architecture
     @State var score = 0
