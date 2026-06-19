@@ -215,7 +215,7 @@ struct ContentView: View {
     // Base State Architecture
     @State var score = 0
     @State var timeRemaining = 10
-    @State var highScore = 0
+    @AppStorage("highScore_tapFrenzy") var highScore: Int = 0
     
     // Challenge 1: Combo Tracking
     @State var comboMultiplier = 1
@@ -711,7 +711,7 @@ struct ContentView: View {
                 isBurstActive    = false
                 isGhostActive    = false
                 isLuckyActive    = false
-                if score > highScore { highScore = score }
+                
             }
         }
     
