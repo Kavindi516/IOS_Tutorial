@@ -146,6 +146,70 @@ struct TimerRing: View {
     }
 }
  
+struct ScoreFlash: View {
+    let text: String
+    let color: Color
+    @State private var opacity: Double = 1.0
+    @State private var offset: CGFloat = 0
+ 
+    var body: some View {
+        Text(text)
+            .font(.system(size: 22, weight: .black, design: .rounded))
+            .foregroundColor(color)
+            .shadow(color: color.opacity(0.6), radius: 8)
+            .offset(y: offset)
+            .opacity(opacity)
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.9)) {
+                    offset = -60
+                    opacity = 0
+                }
+            }
+    }
+}
+
+struct ActiveBoostBanner: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let color: Color
+ 
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(color)
+ 
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundColor(color)
+                Text(subtitle)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.textSecondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(color.opacity(0.12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(color.opacity(0.4), lineWidth: 1)
+                )
+        )
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}
+ 
+struct FlashInfo: Identifiable {
+    let id = UUID()
+    let text: String
+    let color: Color
+}
+
 
 struct ContentView: View {
     // Base State Architecture
