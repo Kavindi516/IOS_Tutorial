@@ -248,131 +248,385 @@ struct ContentView: View {
     
     //Timer
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
+    
     var body: some View {
-        VStack {
-            if timeRemaining > 0 {
-                // CORE GAME VIEW
-                VStack(spacing: 20) {
-                    // Header Metrics Layout
-                    HStack {
-                        Text("Time: \(timeRemaining)s")
-                            .font(.title2).bold()
-                        Spacer()
-                        VStack(alignment: .trailing) {
-                            Text("Score: \(score)")
-                                .font(.title2).bold()
-                            Text("Combo: x\(comboMultiplier)")
-                                .font(.caption).bold()
-                                .foregroundColor(.orange)
-                        }
-                    }
-                    .padding()
-                    
-                    // Burst Status Ribbon Display
-                    if isBurstActive {
-                        Text("🔥 BURST ACTIVE: DOUBLE POINTS! 🔥")
-                            .font(.headline)
-                            .foregroundColor(.yellow)
-                            .bold()
-                            .transition(.scale)
-                    } else {
-                        Text("Game Area")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                    }
-                    
-                    Spacer()
-                    
-                    // BOUNDED BOUNDARY ARENA FOR TARGET MOVEMENTS
-                    GeometryReader { geometry in
-                        ZStack {
-                            Button(action: {
-                                handleTap()
-                            }) {
-                                Text("TAP!")
-                                    .font(.title).bold()
-                                    .foregroundColor(.white)
-                                    .padding(.vertical, 35)
-                                    .padding(.horizontal, 50)
-                                    // Burst overrides normal color configurations
-                                    .background(isBurstActive ? Color.yellow : buttonColor)
-                                    .cornerRadius(20)
-                                    .shadow(radius: 5)
-                            }
-                            // Challenge 3 & 4 Offset/Scaling modifiers
-                            .offset(buttonOffset)
-                            .scaleEffect(CGFloat(timeRemaining) / 10.0 * 0.7 + 0.3)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .onAppear {
-                            // Center alignment initialization
-                            buttonOffset = CGSize.zero
-                        }
-                    }
-                    .frame(height: 350)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(15)
-                    .padding(.horizontal)
-                    
-                    Spacer()
-                }
-                .onReceive(timer) { _ in
-                    processGameTick()
-                }
-                
-            } else {
-                // THE GAME OVER VIEW
-                VStack(spacing: 20) {
-                    Text("Game Over!")
-                        .font(.largeTitle).bold()
-                        .foregroundColor(.red)
-                    
-                    Text("Final Score: \(score)")
-                        .font(.title)
-                    
-                    Text("High Score: \(highScore)")
-                        .font(.title3).foregroundColor(.gray)
-                    
-                    Button(action: {
-                        resetGame()
-                    }) {
-                        Text("Play Again")
-                            .font(.headline).foregroundColor(.white)
-                            .padding().background(Color.green).cornerRadius(10)
-                    }
-                    .padding(.top, 20)
+            ZStack {
+                // Full-screen background
+                Color.appBackground.ignoresSafeArea()
+     
+                if timeRemaining > 0 {
+                    gameView
+                } else {
+                    gameOverView
                 }
             }
+            .onReceive(timer) { _ in
+                processGameTick()
+            }
         }
-    }
+    
+    
+    var gameView: some View {
+            VStack(spacing: 12) {
+     
+                // ── TOP HUD: Score / Timer / Combo ──────
+                // Three StatCards + TimerRing in a row.
+                // HStack with a Spacer in the middle keeps
+                // the left cards and the ring visually balanced.
+                HStack(spacing: 10) {
+                    StatCard(label: "Score",   value: "\(score)",             tint: .accentGold)
+                    StatCard(label: "Combo",   value: "×\(comboMultiplier)",  tint: .accentViolet)
+                    Spacer()
+                    TimerRing(timeRemaining: timeRemaining, totalTime: 10, isFrozen: isTimeFrozen)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+     
+                // ── HIGH SCORE STRIP ─────────────────
+                HStack {
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(.accentGold.opacity(0.7))
+                    Text("Best: \(highScore)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.textSecondary)
+                }
+                .padding(.horizontal, 20)
+     
+                // ── ACTIVE CHALLENGE BANNERS ──────────
+                // Show one banner at a time (in priority order).
+                // withAnimation wraps the if/else so banners
+                // slide in/out smoothly using the transition
+                // defined inside ActiveBoostBanner.
+                VStack(spacing: 6) {
+                    if isBurstActive {
+                        ActiveBoostBanner(
+                            icon:     "bolt.fill",
+                            title:    "BURST ACTIVE",
+                            subtitle: "Double points for 2 seconds!",
+                            color:    .accentGold
+                        )
+                    }
+                    if isGhostActive {
+                        ActiveBoostBanner(
+                            icon:     "eye.slash.fill",
+                            title:    "GHOST MODE",
+                            subtitle: "Tap from memory — button is invisible!",
+                            color:    .accentCyan
+                        )
+                    }
+                    if isLuckyActive {
+                        ActiveBoostBanner(
+                            icon:     "star.fill",
+                            title:    "LUCKY STAR ×5",
+                            subtitle: "Next tap scores 5× — don't miss!",
+                            color:    .accentGold
+                        )
+                    }
+                    if isTimeFrozen {
+                        ActiveBoostBanner(
+                            icon:     "snowflake",
+                            title:    "TIME FROZEN",
+                            subtitle: "Timer paused for 3 seconds!",
+                            color:    .accentCyan
+                        )
+                    }
+                }
+                .padding(.horizontal, 16)
+                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isBurstActive)
+                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isGhostActive)
+                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isLuckyActive)
+                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isTimeFrozen)
+     
+                // ── GAME ARENA ────────────────────────
+                // GeometryReader gives us the arena frame
+                // so we can constrain the button offset.
+                // ZStack layers: background → EnergyRing → button → flash texts.
+                GeometryReader { geometry in
+                    ZStack {
+                        // Arena background with subtle border
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color.arenaBackground)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .strokeBorder(Color.accentViolet.opacity(0.15), lineWidth: 1)
+                            )
+     
+                        // Floating score flashes
+                        // Each FlashInfo in the array gets its own
+                        // ScoreFlash view. They are removed after the
+                        // animation completes (0.9s).
+                        ForEach(flashes) { flash in
+                            ScoreFlash(text: flash.text, color: flash.color)
+                                .offset(buttonOffset)
+                                .offset(y: -70)
+                        }
+     
+                        // EnergyRing + Button group, moved together by offset
+                        ZStack {
+                            // Energy ring is sized relative to the button
+                            EnergyRing(combo: comboMultiplier, isBurst: isBurstActive)
+                                .frame(width: 130, height: 130)
+     
+                            Button(action: { handleTap() }) {
+                                ZStack {
+                                    // Button background
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .fill(tapButtonColor)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .strokeBorder(tapButtonBorderColor, lineWidth: 1.5)
+                                        )
+     
+                                    // Button label changes based on active challenge
+                                    VStack(spacing: 2) {
+                                        if isGhostActive {
+                                            // Empty during ghost — the button is invisible
+                                            Text(" ")
+                                                .font(.system(size: 28, weight: .black, design: .rounded))
+                                        } else if isLuckyActive {
+                                            Text("★")
+                                                .font(.system(size: 28, weight: .black, design: .rounded))
+                                                .foregroundColor(.accentGold)
+                                            Text("TAP!")
+                                                .font(.system(size: 14, weight: .black, design: .rounded))
+                                                .foregroundColor(.white.opacity(0.8))
+                                        } else {
+                                            Text("TAP!")
+                                                .font(.system(size: 30, weight: .black, design: .rounded))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                }
+                                .frame(width: 110, height: 110)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            // Ghost: opacity 0 makes it invisible but still tappable
+                            .opacity(isGhostActive ? 0.0 : 1.0)
+                            // Challenge 4 (Shrinking): scale interpolated from 1.0 → 0.4
+                            .scaleEffect(buttonShrinkScale)
+                        }
+                        .offset(buttonOffset)
+                    }
+                }
+                .frame(maxHeight: .infinity)
+                .padding(.horizontal, 16)
+     
+                // ── TIME FREEZE BUTTON ────────────────
+                // Only visible between seconds 7 and 4.
+                // Uses .disabled(freezeUsed) so it grays out
+                // after first use. The label changes to show
+                // it's been consumed.
+                if freezeAvailable && !freezeUsed {
+                    Button(action: { activateTimeFreeze() }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "snowflake")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("FREEZE TIME")
+                                .font(.system(size: 13, weight: .black))
+                                .tracking(0.5)
+                        }
+                        .foregroundColor(.accentCyan)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(Color.accentCyan.opacity(0.12))
+                                .overlay(
+                                    Capsule()
+                                        .strokeBorder(Color.accentCyan.opacity(0.5), lineWidth: 1.5)
+                                )
+                        )
+                    }
+                    .transition(.scale.combined(with: .opacity))
+                    .animation(.spring(), value: freezeAvailable)
+                }
+     
+                Spacer(minLength: 8)
+            }
+        }
+    
+    var gameOverView: some View {
+            VStack(spacing: 0) {
+                Spacer()
+     
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(Color.accentDanger.opacity(0.12))
+                        .frame(width: 90, height: 90)
+                    Image(systemName: "flag.checkered")
+                        .font(.system(size: 38))
+                        .foregroundColor(.accentDanger)
+                }
+                .padding(.bottom, 24)
+     
+                Text("GAME OVER")
+                    .font(.system(size: 34, weight: .black, design: .rounded))
+                    .foregroundColor(.textPrimary)
+                    .tracking(2)
+     
+                // New high score callout (only shown if beaten)
+                if score == highScore && score > 0 {
+                    HStack(spacing: 6) {
+                        Image(systemName: "trophy.fill")
+                            .foregroundColor(.accentGold)
+                        Text("NEW HIGH SCORE!")
+                            .font(.system(size: 13, weight: .black))
+                            .foregroundColor(.accentGold)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule().fill(Color.accentGold.opacity(0.12))
+                            .overlay(Capsule().strokeBorder(Color.accentGold.opacity(0.4), lineWidth: 1))
+                    )
+                    .padding(.top, 12)
+                }
+     
+                // Final score — gold if new high, else white
+                Text("\(score)")
+                    .font(.system(size: 80, weight: .black, design: .rounded))
+                    .foregroundColor(score == highScore && score > 0 ? .accentGold : .textPrimary)
+                    .monospacedDigit()
+                    .padding(.top, 8)
+     
+                Text("POINTS")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.textSecondary)
+                    .tracking(3)
+     
+                // Previous best (shown when score doesn't beat it)
+                if score < highScore {
+                    HStack(spacing: 6) {
+                        Image(systemName: "trophy")
+                            .font(.system(size: 12))
+                            .foregroundColor(.textSecondary)
+                        Text("Best: \(highScore)")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.textSecondary)
+                    }
+                    .padding(.top, 8)
+                }
+     
+                Spacer()
+     
+                // Play Again button
+                Button(action: { resetGame() }) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 16, weight: .bold))
+                        Text("PLAY AGAIN")
+                            .font(.system(size: 17, weight: .black))
+                            .tracking(1)
+                    }
+                    .foregroundColor(.appBackground)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(
+                                LinearGradient(
+                                    colors: [.accentCyan, .accentViolet],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                    )
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 48)
+            }
+        }
+     
+    
+    // Button background color based on current active challenge state
+        var tapButtonColor: Color {
+            if isBurstActive  { return Color.accentGold.opacity(0.25) }
+            if isLuckyActive  { return Color(hex: "332B00")           }
+            if buttonColor == .accentGreen  { return Color(hex: "003320") }
+            if buttonColor == .accentGray   { return Color(hex: "1A2030") }
+            return Color.accentViolet.opacity(0.18)
+        }
+     
+        // Button border stroke changes with active state
+        var tapButtonBorderColor: Color {
+            if isBurstActive  { return .accentGold }
+            if isLuckyActive  { return .accentGold }
+            return buttonColor.opacity(0.7)
+        }
+     
+        // Challenge 4: Button shrinks from full (1.0) to 40% (0.4)
+        // Formula: maps 10→0 seconds onto 1.0→0.4 scale
+        var buttonShrinkScale: CGFloat {
+            let t = CGFloat(timeRemaining) / 10.0
+            return t * 0.6 + 0.4   // range: [0.4, 1.0]
+        }
+    
+
     
     // --- APP REFACTOR MECHANICS ENGINE ---
     
     // Master Input Action Evaluator
     func handleTap() {
-        let now = Date()
-        if now.timeIntervalSince(lastTapTime) <= 0.5 {
-            comboMultiplier += 1
-        } else {
-            comboMultiplier = 1
+            let now = Date()
+     
+            // ── Combo logic (Challenge 1) ──────────
+            // If we tapped within 0.5s of the last tap,
+            // increment combo. Otherwise reset to 1.
+            if now.timeIntervalSince(lastTapTime) <= 0.5 {
+                comboMultiplier += 1
+            } else {
+                comboMultiplier = 1
+            }
+            lastTapTime = now
+     
+            // ── Base points (Challenge 2: Trap Colour) ──
+            var basePoints = 1
+            if buttonColor == .accentGray  { basePoints = -2 }  // penalty
+            if buttonColor == .accentGreen { basePoints =  2 }  // bonus
+     
+            // ── Lucky Star multiplier (Challenge 7) ──
+            // If lucky is active this tap, multiply base by 5
+            // then deactivate so it only fires once.
+            if isLuckyActive {
+                basePoints *= 5
+                isLuckyActive = false
+            }
+     
+            // ── Burst multiplier (Challenge 5) ──────
+            if isBurstActive { basePoints *= 2 }
+     
+            // ── Apply combo ───────────────────────────
+            let totalPoints = basePoints * comboMultiplier
+     
+            // ── Score flash text ──────────────────────
+            let flashText = buildFlashText(points: totalPoints, base: basePoints)
+            let flashColor: Color = totalPoints >= 0 ? .accentGold : .accentDanger
+            addFlash(text: flashText, color: flashColor)
+     
+            score += totalPoints
         }
-        lastTapTime = now
-        
-        // Value computation bases
-        var basePoint = 1
-        if buttonColor == .gray {
-            basePoint = -2  // Penalty state rule
-        } else if buttonColor == .green {
-            basePoint = 2   // Bonus state rule
+     
+        // Builds the human-readable flash string: e.g. "+2 ×3" or "-2" or "★+10"
+        func buildFlashText(points: Int, base: Int) -> String {
+            let sign   = points >= 0 ? "+" : ""
+            let prefix = isLuckyActive ? "★" : ""
+            if comboMultiplier > 1 {
+                return "\(prefix)\(sign)\(base) ×\(comboMultiplier)"
+            }
+            return "\(prefix)\(sign)\(points)"
         }
-        
-        if isBurstActive {
-            basePoint *= 2  // Multiplier compounding for bursts
+     
+        // Adds a new flash, then removes it after the animation (0.95s)
+        func addFlash(text: String, color: Color) {
+            let f = FlashInfo(text: text, color: color)
+            flashes.append(f)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.95) {
+                flashes.removeAll { $0.id == f.id }
+            }
         }
-        
-        score += (basePoint * comboMultiplier)
-    }
+     
     
 
     func processGameTick() {
