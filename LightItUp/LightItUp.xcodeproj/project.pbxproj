@@ -11,6 +11,11 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		DF06630E2FF7C6C800D12EDA /* QuizRush */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = QuizRush;
+			sourceTree = "<group>";
+		};
 		DF72FEBC2FE57683004EA382 /* LightItUp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = LightItUp;
@@ -32,6 +37,7 @@
 		DF72FEB12FE57683004EA382 = {
 			isa = PBXGroup;
 			children = (
+				DF06630E2FF7C6C800D12EDA /* QuizRush */,
 				DF72FEBC2FE57683004EA382 /* LightItUp */,
 				DF72FEBB2FE57683004EA382 /* Products */,
 			);
@@ -61,6 +67,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				DF06630E2FF7C6C800D12EDA /* QuizRush */,
 				DF72FEBC2FE57683004EA382 /* LightItUp */,
 			);
 			name = LightItUp;
