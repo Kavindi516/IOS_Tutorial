@@ -10,6 +10,8 @@ import SwiftUI
 struct HomeView: View {
     @AppStorage("highScore_tapFrenzy") private var tapFrenzyBest: Int = 0
     @AppStorage("highScore_lightItUp") private var lightItUpBest: Int = 0
+    @AppStorage("highScore_quizRush")  private var quizRushBest:  Int = 0
+     
  
     var body: some View {
         NavigationStack {
@@ -58,13 +60,24 @@ struct HomeView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        
+                        NavigationLink(destination: QuizRushView()) {
+                            ModeCard(
+                                icon: "brain.head.profile",
+                                title: "Quiz Rush",
+                                subtitle: "10 live trivia questions — how smart are you?",
+                                accentColor: Color(hex: "7B61FF"),
+                                best: quizRushBest
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 24)
  
                     Spacer()
  
                     // Footer
-                    Text("BSCCOMP25.1P · Week 2")
+                    Text("BSCCOMP25.1P · Week 3")
                         .font(.system(size: 11))
                         .foregroundColor(.gray.opacity(0.4))
                         .padding(.bottom, 24)
