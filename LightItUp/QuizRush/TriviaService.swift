@@ -12,9 +12,8 @@ struct TriviaService {
     // MARK: – API config (one place to change if needed)
     private static let baseURL = "https://opentdb.com/api.php"
 
-    // My own choices: 10 questions, multiple choice only
-    // I also allow any category so rounds feel varied
-    static func url(amount: Int = 10) -> URL {
+    // Over-fetch to guarantee enough unique questions after dedup
+    static func url(amount: Int = 15) -> URL {
         var components = URLComponents(string: baseURL)!
         components.queryItems = [
             URLQueryItem(name: "amount", value: "\(amount)"),
@@ -26,8 +25,11 @@ struct TriviaService {
     // MARK: – Fetch
     // Throws on network error or bad HTTP status.
     // The ViewModel catches and sets .failed state.
+    // Fetches extra questions and deduplicates to avoid repeats.
     static func fetchQuestions(amount: Int = 10) async throws -> [QuizQuestion] {
-        let (data, response) = try await URLSession.shared.data(from: url(amount: amount))
+        // Request more than needed so we can deduplicate
+        let fetchCount = amount + 5
+        let (data, response) = try await URLSession.shared.data(from: url(amount: fetchCount))
 
         // Guard on HTTP status
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
@@ -41,7 +43,21 @@ struct TriviaService {
             throw TriviaError.noQuestions
         }
 
-        return decoded.results
+        // Deduplicate by question text — API can return the same question twice
+        var seen = Set<String>()
+        var unique: [QuizQuestion] = []
+        for q in decoded.results {
+            if seen.insert(q.decodedQuestion).inserted {
+                unique.append(q)
+            }
+            if unique.count >= amount { break }
+        }
+
+        guard !unique.isEmpty else {
+            throw TriviaError.noQuestions
+        }
+
+        return Array(unique.prefix(amount))
     }
 }
 

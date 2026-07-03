@@ -14,6 +14,18 @@ enum AnswerButtonState {
     case revealed   // the round answered — show correct answer in green
 }
 
+// MARK: – Custom button style with press-down feedback
+// Gives instant visual feedback: the button scales down when pressed
+// so the user can SEE they tapped it (the old .plain style gave zero feedback)
+struct AnswerPressButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
 struct AnswerButton: View {
     let text: String
     let state: AnswerButtonState
@@ -57,7 +69,7 @@ struct AnswerButton: View {
                     .strokeBorder(borderColor, lineWidth: state == .idle ? 1 : 1.5)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AnswerPressButtonStyle())
         .offset(x: shakeOffset)
         .onChange(of: state) { _, newState in
             if newState == .wrong {
@@ -132,4 +144,3 @@ struct AnswerButton: View {
 // extension Color {
 //     init(hex: String) { ... }
 // }
-

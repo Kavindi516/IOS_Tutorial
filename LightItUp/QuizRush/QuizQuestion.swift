@@ -6,7 +6,6 @@
 //
 
 import Foundation
-internal import UIKit
 
 // Outer wrapper — matches the top-level JSON object
 struct TriviaResponse: Codable {
@@ -33,24 +32,31 @@ struct QuizQuestion: Codable, Identifiable {
         case difficulty
     }
 
-    // All four answer options shuffled — computed so it's always available
-    var shuffledAnswers: [String] {
-        (incorrectAnswers + [correctAnswer]).shuffled()
-    }
+    // MARK: – Stable shuffled answers (computed ONCE, stored)
+    // Previously this was a computed property that called .shuffled() on every access,
+    // causing the answer order to jump around on every SwiftUI re-render.
+    private(set) var stableShuffledAnswers: [String] = []
 
-    // Decoded question text — API HTML-encodes special chars like &amp; &#039;
-    var decodedQuestion: String {
-        question.htmlDecoded
-    }
+    // Decoded & cached — computed once, not on every View body call
+    private(set) var decodedQuestion: String = ""
+    private(set) var decodedCorrectAnswer: String = ""
+    private(set) var decodedShuffledAnswers: [String] = []
 
-    // Decoded correct answer
-    var decodedCorrectAnswer: String {
-        correctAnswer.htmlDecoded
-    }
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        question = try container.decode(String.self, forKey: .question)
+        correctAnswer = try container.decode(String.self, forKey: .correctAnswer)
+        incorrectAnswers = try container.decode([String].self, forKey: .incorrectAnswers)
+        category = try container.decode(String.self, forKey: .category)
+        difficulty = try container.decode(String.self, forKey: .difficulty)
 
-    // Decoded shuffled answers
-    var decodedShuffledAnswers: [String] {
-        shuffledAnswers.map { $0.htmlDecoded }
+        // Shuffle ONCE at decode time — this order is now stable
+        stableShuffledAnswers = (incorrectAnswers + [correctAnswer]).shuffled()
+
+        // Decode HTML entities ONCE (the old NSAttributedString path was very slow)
+        decodedQuestion = question.htmlDecoded
+        decodedCorrectAnswer = correctAnswer.htmlDecoded
+        decodedShuffledAnswers = stableShuffledAnswers.map { $0.htmlDecoded }
     }
 
     // Difficulty as a display colour name (used in UI)
@@ -64,17 +70,51 @@ struct QuizQuestion: Codable, Identifiable {
     }
 }
 
-// HTML entity decoder — Open Trivia DB returns HTML-encoded strings
+// MARK: – Fast HTML entity decoder
+// Open Trivia DB returns HTML-encoded strings like &amp; &#039; &quot; etc.
+// The old NSAttributedString approach was extremely slow and caused visible lag.
 extension String {
     var htmlDecoded: String {
-        guard let data = data(using: .utf8) else { return self }
-        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
-            .documentType: NSAttributedString.DocumentType.html,
-            .characterEncoding: String.Encoding.utf8.rawValue
+        var result = self
+        // Named entities (most common from Open Trivia DB)
+        let namedEntities: [(String, String)] = [
+            ("&amp;",   "&"),
+            ("&lt;",    "<"),
+            ("&gt;",    ">"),
+            ("&quot;",  "\""),
+            ("&apos;",  "'"),
+            ("&laquo;", "«"),
+            ("&raquo;", "»"),
+            ("&ndash;", "–"),
+            ("&mdash;", "—"),
+            ("&hellip;", "…"),
+            ("&trade;", "™"),
+            ("&copy;",  "©"),
+            ("&reg;",   "®"),
+            ("&nbsp;",  " "),
+            ("&shy;",   "\u{00AD}"),
+            ("&ldquo;", "\u{201C}"),
+            ("&rdquo;", "\u{201D}"),
+            ("&lsquo;", "\u{2018}"),
+            ("&rsquo;", "\u{2019}"),
         ]
-        guard let attributed = try? NSAttributedString(data: data, options: options, documentAttributes: nil) else {
-            return self
+        for (entity, char) in namedEntities {
+            result = result.replacingOccurrences(of: entity, with: char)
         }
-        return attributed.string
+
+        // Numeric entities: &#039; &#123; etc.
+        while let hashRange = result.range(of: "&#") {
+            guard let semiRange = result.range(of: ";", range: hashRange.upperBound..<result.endIndex) else { break }
+            let numStr = String(result[hashRange.upperBound..<semiRange.lowerBound])
+            let fullEntity = result[hashRange.lowerBound..<semiRange.upperBound]
+            if let code = UInt32(numStr), let scalar = Unicode.Scalar(code) {
+                result = result.replacingOccurrences(of: fullEntity, with: String(scalar))
+            } else {
+                // Malformed entity — skip it to avoid infinite loop
+                break
+            }
+        }
+
+        return result
     }
 }
