@@ -133,6 +133,7 @@ class QuizViewModel: ObservableObject {
         if next >= questions.count {
             // Round complete
             if score > highScore { highScore = score }
+            SessionSaver.save(mode: .quizRush, score: score)
             viewState = .results
         } else {
             currentIndex = next

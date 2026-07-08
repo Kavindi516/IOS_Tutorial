@@ -406,6 +406,23 @@ struct QuizRushView: View {
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
+                    
+                    ShareLink(
+                        item: "I just scored \(vm.score) on Quiz Rush — beat that! 🧠",
+                        subject: Text("Quiz Rush Score"),
+                        message: Text("Can you beat \(vm.score) points?")
+                    ) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "square.and.arrow.up")
+                            Text("Share Score")
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundColor(Color(hex: "4FC3F7"))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(white: 0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
 
                     Button { vm.reset() } label: {
                         Text("Home")

@@ -534,6 +534,25 @@ struct TapFrenzyView: View {
                             )
                     )
                 }
+                
+                ShareLink(
+                    item: "I just scored \(score) on Tap Frenzy — beat that! ⚡",
+                    subject: Text("Tap Frenzy Score"),
+                    message: Text("Can you beat \(score) points?")
+                ) {
+                    HStack(spacing: 8) {
+                    Image(systemName: "square.and.arrow.up")
+                    Text("Share Score")
+                    .font(.system(size: 15, weight: .semibold))
+                    }
+                    .foregroundColor(.accentCyan)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.white.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+            }
+    
                 .padding(.horizontal, 32)
                 .padding(.bottom, 48)
             }
@@ -711,6 +730,7 @@ struct TapFrenzyView: View {
                 isBurstActive    = false
                 isGhostActive    = false
                 isLuckyActive    = false
+                SessionSaver.save(mode: .tapFrenzy, score: score)
                 
             }
         }

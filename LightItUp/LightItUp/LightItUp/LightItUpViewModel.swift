@@ -205,5 +205,6 @@ class LightItUpViewModel: ObservableObject {
             highScore = score
             newHighScore = true
         }
+        SessionSaver.save(mode: .lightItUp, score: score) 
     }
 }
