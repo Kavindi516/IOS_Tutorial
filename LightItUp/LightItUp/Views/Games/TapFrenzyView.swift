@@ -761,7 +761,7 @@ struct TapFrenzyView: View {
             ghostCooldown   = 3
             flashes         = []
         }
-    }
+
      
 #Preview {
     TapFrenzyView()
